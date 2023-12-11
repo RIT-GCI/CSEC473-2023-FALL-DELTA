@@ -1,0 +1,79 @@
+---
+- name: Configure Thunderbird Mail Server For blue1
+  hosts: 192.168.10.11
+  become: yes
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: 
+          - postfix
+          - dovecot-core
+          - dovecot-imapd
+          - dovecot-lmtpd
+          - dovecot-mysql
+          - dovecot-pop3d
+          - dovecot-sieve
+          - postfix-mysql
+          - mysql-server
+        state: present
+
+    - name: Configure MySQL database for mail server
+      mysql_db:
+        name: mailserver
+      when: "'mailserver' not in mysql_databases.results | map(attribute='database') | list"
+
+    - name: Create MySQL user for mail server
+      mysql_user:
+        name: mailuser
+        password: your_mail_user_password
+        host: localhost
+        priv: 'mailserver.*:ALL'
+      when: "'mailuser' not in mysql_users.results | map(attribute='user') | list"
+
+    - name: Copy Postfix main configuration file
+      template:
+        src: postfix/main.cf.j2
+        dest: /etc/postfix/main.cf
+      notify: Restart Postfix
+
+    - name: Copy Postfix master configuration file
+      template:
+        src: postfix/master.cf.j2
+        dest: /etc/postfix/master.cf
+      notify: Restart Postfix
+
+    - name: Copy Dovecot configuration files
+      template:
+        src: dovecot/dovecot.conf.j2
+        dest: /etc/dovecot/dovecot.conf
+      notify: Restart Dovecot
+
+    - name: Create mail user accounts
+      user:
+        name: "{{ item }}"
+        createhome: yes
+      loop:
+        - eknupp@clfc.com
+        - jhighfields@clfc.com
+        - pvickers@clfc.com
+        - tmcartney@clfc.com
+        - xhuang@clfc.com
+        # Add more users as needed
+
+    - name: Restart Postfix and Dovecot
+      meta: flush_handlers
+
+  handlers:
+    - name: Restart Postfix
+      service:
+        name: postfix
+        state: restarted
+
+    - name: Restart Dovecot
+      service:
+        name: dovecot
+        state: restarted

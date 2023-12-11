@@ -1,0 +1,33 @@
+- name: Add local users to all Linux machines
+  become: yes
+  hosts: linux
+  vars:
+    users:
+      - username: blue_admin
+        password: !unsafe $y$j9T$QGE6DlzN/X3fUJ9vjZLQu.$w2g5OtNjDoFt0TEzw/9KtAooWHC1m8xccumVfNk3WG/  
+      - username: grey_admin
+        password: !unsafe $y$j9T$0vvbdQITwyaJSuLP83Mlr.$5K0Zh9Sej2XiRSBoDN77v84GDhSZzGCYtiojO3kPOA/
+      - username: notouchaccount
+        password: !unsafe $y$j9T$0vvbdQITwyaJSuLP83Mlr.$5K0Zh9Sej2XiRSBoDN77v84GDhSZzGCYtiojO3kPOA/
+    sudo_users:
+      - username: grey_admin
+      - username: notouchaccount
+
+  tasks:
+
+  - name: Adding users and encrypted passwords
+    user:
+      name: "{{item.username}}"
+      password: "{{item.password}}"
+      createhome: yes
+      shell: /bin/bash
+      update_password: on_create
+    with_items: "{{users}}"
+
+  - name: Create a sudoers file for grey_admin
+    template:
+      src: sudoers_temp.j2
+      dest: "/etc/sudoers.d/{{item.username}}"
+    become: yes
+    with_items: "{{sudo_users}}"
+
